@@ -45,5 +45,15 @@ if has_commanderly then
       keywords = "split-personality",
       replace = true,
     },
+    {
+      title = "Show Buffer Switcher",
+      id = "split_personality_show_switcher",
+      desc = "Switch between buffers in the current split.",
+      run = function()
+        split_personality.show_switcher()
+      end,
+      keywords = "split-personality",
+      replace = true,
+    },
   })
 end
