@@ -1,81 +1,48 @@
+local strings = require("plenary.strings")
+local utils = require("split-personality.utils")
+
 local M = {}
 
-local is_windows = vim.fn.has("win32") == 1 or vim.fn.has("win32unix") == 1
-local path_separator
+local function create_element(path, bufnr)
+  local basename = utils.basename(path)
+  local extension = utils.extension(path)
+  local icon = " "
+  local highlight = "SplitPersonalityFileIcon"
 
-if is_windows then
-  path_separator = "\\"
-else
-  path_separator = "/"
-end
-
-
-local function segment_path(path)
-  local pattern = string.format("([^%s]+)", path_separator)
-  local segments = {}
-  local _ = string.gsub(path, pattern, function(c)
-    segments[#segments + 1] = c
-  end)
-  return segments
-end
-
-
-local function strip_common_prefixes(fullpaths)
-  local segmented_paths = {}
-  for idx, fullpath in pairs(fullpaths) do
-    segmented_paths[idx] = segment_path(fullpath)
+  local success, web_devicons = pcall(require, "nvim-web-devicons")
+  if success then
+    local devicon, hl = web_devicons.get_icon(basename, extension, { default = true })
+    icon = devicon or icon
+    highlight = hl or highlight
   end
 
-  local num_found = 0
-  local continue = true
-  while continue do
-    local current_segment = nil
-    for _, segmented_path in pairs(segmented_paths) do
-      if num_found + 1 >= #segmented_path then
-        continue = false
-        break
-      elseif continue then
-        if current_segment == nil then
-          current_segment = segmented_path[num_found + 1]
-        elseif current_segment ~= segmented_path[num_found + 1] then
-          continue = false
-          break
-        end
-      end
-    end
-    if continue then
-      num_found = num_found + 1
-    end
-  end
-
-  local results = {}
-  for idx, segmented_path in pairs(segmented_paths) do
-    local suffix = nil
-    for i = num_found + 1, #segmented_path do
-      if suffix == nil then
-        suffix = segmented_path[i]
-      else
-        suffix = suffix .. path_separator .. segmented_path[i]
-      end
-    end
-    results[idx] = suffix
-  end
-  return results
+  return {
+    bufnr = bufnr,
+    basename = basename,
+    reldir = utils.relative_path(utils.dirname(path, true)),
+    icon = icon,
+    highlight = highlight,
+    width = strings.strdisplaywidth(basename),
+  }
 end
-
 
 
 M.show_switcher = function(buffers, opts)
   local Menu = require("nui.menu")
 
-  local fullpaths = {}
-  for idx, bufnr in pairs(buffers) do
-    fullpaths[idx] = vim.api.nvim_buf_get_name(bufnr)
+  local elements = {}
+  for _, bufnr in pairs(buffers) do
+    local path = vim.api.nvim_buf_get_name(bufnr)
+    table.insert(elements, create_element(path, bufnr))
   end
 
+  local column_width = utils.max(elements, "width") + 4
+
   local items = {}
-  for idx, shortpath in pairs(strip_common_prefixes(fullpaths)) do
-    items[idx] = Menu.item(shortpath, { bufnr = buffers[idx] })
+  for _, element in pairs(elements) do
+    local padded = utils.right_pad(element.basename, column_width)
+    local label = "  " .. element.icon .. " " .. padded .. element.reldir .. "  "
+    table.insert(items, Menu.item(label, element))
   end
 
   local popup_options = {

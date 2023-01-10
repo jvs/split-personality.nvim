@@ -1,7 +1,7 @@
-local M = {}
-
 local list = require("split-personality.circular-list")
 local switcher = require("split-personality.switcher")
+
+local M = {}
 
 local windows = {}
 local win_getid = vim.fn.win_getid
