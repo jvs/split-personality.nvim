@@ -1,5 +1,6 @@
 local list = require("split-personality.circular-list")
 local switcher = require("split-personality.switcher")
+local utils = require("split-personality.utils")
 
 local M = {}
 
@@ -59,6 +60,30 @@ local function switch_buffers()
   if bufnr ~= nil then
     vim.cmd(string.format("b%d", bufnr))
   end
+end
+
+local function reset_buffers(buffers)
+  -- Reset the order of the buffers. If any new buffers have appeared, add them
+  -- to the end of the table.
+  local current_buffers = M.get_buffers()
+  local result = {}
+
+  local current_set = utils.create_set(current_buffers)
+  local target_set = utils.create_set(buffers)
+
+  for _, buffer in pairs(buffers) do
+    if utils.set_contains(current_set, buffer) then
+      table.insert(result, buffer)
+    end
+  end
+
+  for _, buffer in pairs(current_buffers) do
+    if not utils.set_contains(target_set, buffer) then
+      table.insert(result, buffer)
+    end
+  end
+
+  set_buffers(result)
 end
 
 function M.close_buffer()
@@ -122,10 +147,12 @@ function M.show_switcher()
       local bufnr = buffers[1]
       if bufnr ~= nil then
         vim.api.nvim_win_set_buf(winid, bufnr)
+        reset_buffers(buffers)
       end
     end,
 
     on_submit = function(item)
+      reset_buffers(buffers)
       M.goto_buffer(item.bufnr)
     end,
   })

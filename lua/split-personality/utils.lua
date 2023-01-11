@@ -125,5 +125,17 @@ M.split_path = function(path)
   return M.split(path, path_separator)
 end
 
+M.create_set = function(tab)
+  local result = {}
+  for _, element in pairs(tab) do
+    result[element] = true
+  end
+  return result
+end
+
+M.set_contains = function(set, element)
+  return set[element] ~= nil
+end
+
 
 return M
